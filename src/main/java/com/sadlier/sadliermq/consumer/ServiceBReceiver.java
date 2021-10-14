@@ -8,6 +8,8 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
+import org.springframework.amqp.rabbit.listener.AbstractMessageListenerContainer;
+import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -32,7 +34,10 @@ public class ServiceBReceiver {
     @Value("${rmp.retry.max.count}")
     private Integer MAX_RETRY_COUNT;
 
-    @RabbitListener(id = "customq", autoStartup = "true", containerFactory = "rabbitListenerContainerFactoryCustom")
+    @Autowired
+    RabbitListenerEndpointRegistry registry;
+
+    @RabbitListener(id = "userQ", autoStartup = "false", containerFactory = "rabbitListenerContainerFactoryCustom")
     public void processMessage(Message message, Channel channel) {
         long deliverytag = 0;
         try {
@@ -99,5 +104,18 @@ public class ServiceBReceiver {
             // TODO Auto-generated catch block
             e1.printStackTrace();
         }
+    }
+
+    public void registerCustomQtoListener() throws InterruptedException {
+        AbstractMessageListenerContainer listenerContainer = (AbstractMessageListenerContainer) registry.getListenerContainer("userQ");
+
+        // for (MessageListenerContainer listenerContainer :messageListenerContainers) {
+        if (!(listenerContainer.getQueueNames().length > 0))
+            listenerContainer.addQueueNames(sadlierMQDeclare.getUserQ());
+        System.out.println(listenerContainer);
+        if (!listenerContainer.isRunning())
+            listenerContainer.start();
+        Thread.sleep(100);
+
     }
 }
