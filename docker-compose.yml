@@ -1,0 +1,22 @@
+version: "3"
+
+networks:
+  sadlier-rabbitmq-net:
+    driver: bridge
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: sadlier-rabbitmq
+    restart: always
+    ports:
+      # AMQP protocol port
+      - "5672:5672"
+      # HTTP management UI
+      - "15672:15672"
+    networks:
+      - sadlier-rabbitmq-net
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=root
+      - RABBITMQ_ERLANG_COOKIE=cookie_for_clustering
