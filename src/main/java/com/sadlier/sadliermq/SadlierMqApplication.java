@@ -10,12 +10,6 @@ public class SadlierMqApplication {
 
 	public static void main(String[] args) {
 		ApplicationContext app = SpringApplication.run(SadlierMqApplication.class, args);
-		ServiceBReceiver serviceBReceiver = app.getBean(ServiceBReceiver.class);
-		try {
-			serviceBReceiver.registerCustomQtoListener();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
 	}
 
 }

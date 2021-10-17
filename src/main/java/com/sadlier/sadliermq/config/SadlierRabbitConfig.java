@@ -69,7 +69,8 @@ public class SadlierRabbitConfig {
         listenerContainerFcatory.setConcurrentConsumers(ccount);
         listenerContainerFcatory.setMaxConcurrentConsumers(10);
         listenerContainerFcatory.setPrefetchCount(4);
-        listenerContainerFcatory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+//        listenerContainerFcatory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+        listenerContainerFcatory.setAutoStartup(true);
         return listenerContainerFcatory;
     }
 }

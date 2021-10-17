@@ -1,8 +1,12 @@
 package com.sadlier.sadliermq.consumer;
 
 import com.rabbitmq.client.Channel;
-import com.sadlier.sadliermq.config.SadlierMQDeclare;
+import com.rabbitmq.client.ExceptionHandler;
+import com.sadlier.sadliermq.annotation.EnableRabbitRetryAndDlq;
+import com.sadlier.sadliermq.common.properties.SadlierMQProperties;
+import com.sadlier.sadliermq.config.SadlierMQFactory;
 import com.sadlier.sadliermq.publisher.SadlierRabbitTemplate;
+import com.sadlier.sadliermq.service.QueueRetryComponent;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
@@ -29,7 +33,7 @@ public class ServiceBReceiver {
     SadlierRabbitTemplate sadlierRabbitTemplate;
 
     @Autowired
-    SadlierMQDeclare sadlierMQDeclare;
+    SadlierMQFactory sadlierMQDeclare;
 
     @Value("${rmp.retry.max.count}")
     private Integer MAX_RETRY_COUNT;
@@ -37,85 +41,62 @@ public class ServiceBReceiver {
     @Autowired
     RabbitListenerEndpointRegistry registry;
 
-    @RabbitListener(id = "userQ", autoStartup = "false", containerFactory = "rabbitListenerContainerFactoryCustom")
-    public void processMessage(Message message, Channel channel) {
-        long deliverytag = 0;
-        try {
-            log.info("Received message: \n{}", message);
-            int num = channel.getChannelNumber();
+    @Autowired
+    QueueRetryComponent queueRetryComponent;
 
-            MessageProperties properties = message.getMessageProperties();
-            deliverytag = properties.getDeliveryTag();
-            String messageId = properties.getMessageId();
+    @RabbitListener(id = "userQ", containerFactory = "rabbitListenerContainerFactoryCustom", queues = "#{autoDeclareUserQueue.name}")
+    @EnableRabbitRetryAndDlq(retryWhen = {RuntimeException.class}, discardWhen = {NullPointerException.class})
+    public void processMessage(Message message) throws InterruptedException {
+        log.info("Received message: \n{}", message);
 
-            Map<String, Object> header = properties.getHeaders();
-            String type = (String) header.get("message-type");
+        MessageProperties properties = message.getMessageProperties();
 
-            log.info("Processing message #id:{}", messageId);
-            handlePayload(message, type);
+        Map<String, Object> header = properties.getHeaders();
+        String type = (String) header.get("message-type");
 
-            channel.basicAck(deliverytag, false);
+        handlePayload(message, type);
 
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-            sendNack(message, channel, deliverytag);
-        }
+    }
+
+    @RabbitListener(id = "reRetryUserQ", containerFactory = "rabbitListenerContainerFactoryCustom", queues = "#{autoDeclareRetryQueue.name}")
+    @EnableRabbitRetryAndDlq(retryWhen = {RuntimeException.class}, discardWhen = {NullPointerException.class})
+    public void reProcessMessage(Message message) throws InterruptedException {
+        log.info("Received message: \n{}", message);
+
+        MessageProperties properties = message.getMessageProperties();
+
+        Map<String, Object> header = properties.getHeaders();
+        String type = (String) header.get("message-type");
+
+        handlePayload(message, type);
 
     }
 
     private void handlePayload(Message message, String type) throws InterruptedException {
         if (type.equalsIgnoreCase("good-message")) {
-            // simulate succesful processing
+            // simulate successful processing
             Thread.sleep(2000);
-        } else {
-            // simulate fail processing
+        } else if(type.equalsIgnoreCase("bad-message")) {
+            // should be retried
             Thread.sleep(2000);
-            throw new RuntimeException("Failed to process");
+            throw new RuntimeException("Failed to process. Will be retried");
+        } else{
+            // routing to error exchange
+            Thread.sleep(2000);
+            throw new NullPointerException("Failed to process. Will direct to error exchange");
         }
     }
 
-    private void sendNack(Message message, Channel channel, long deliverytag) {
-        try {
-            boolean ismaxTryreached = false;
-            MessageProperties props = message.getMessageProperties();
-            List<Map<String, ?>> headers = props.getXDeathHeader();// getHeaders();
-
-            if (headers != null)
-                for (Map<String, ?> m : headers) {
-                    System.out.println(m);
-                    if (((String) m.get("queue")).equalsIgnoreCase(sadlierMQDeclare.getUserQ())) {
-                        long c = ((Long) m.get("count")).longValue();
-
-                        System.out.println("count is:" + c + " queue is:" + m.get("queue"));
-                        if (c == MAX_RETRY_COUNT)
-                            ismaxTryreached = true;
-                    }
-                }
-
-            if (ismaxTryreached) {
-                channel.basicAck(deliverytag, false);
-                CorrelationData correlationData = new CorrelationData("error");
-                sadlierRabbitTemplate.send(SadlierMQDeclare.EXCHANGE_ERROR, SadlierMQDeclare.RTK_ERROR_TOPIC, message,
-                        correlationData);
-            } else
-                channel.basicNack(deliverytag, false, false);
-        } catch (IOException e1) {
-            // TODO Auto-generated catch block
-            e1.printStackTrace();
-        }
-    }
-
-    public void registerCustomQtoListener() throws InterruptedException {
-        AbstractMessageListenerContainer listenerContainer = (AbstractMessageListenerContainer) registry.getListenerContainer("userQ");
-
-        // for (MessageListenerContainer listenerContainer :messageListenerContainers) {
-        if (!(listenerContainer.getQueueNames().length > 0))
-            listenerContainer.addQueueNames(sadlierMQDeclare.getUserQ());
-        System.out.println(listenerContainer);
-        if (!listenerContainer.isRunning())
-            listenerContainer.start();
-        Thread.sleep(100);
-
-    }
+//    public void registerCustomQtoListener() throws InterruptedException {
+//        AbstractMessageListenerContainer listenerContainer = (AbstractMessageListenerContainer) registry.getListenerContainer("userQ");
+//
+//        // for (MessageListenerContainer listenerContainer :messageListenerContainers) {
+//        if (!(listenerContainer.getQueueNames().length > 0))
+//            listenerContainer.addQueueNames(sadlierMQDeclare.getUserQ());
+//        System.out.println(listenerContainer);
+//        if (!listenerContainer.isRunning())
+//            listenerContainer.start();
+//        Thread.sleep(100);
+//
+//    }
 }

@@ -1,6 +1,6 @@
 package com.sadlier.sadliermq.publisher;
 
-import com.sadlier.sadliermq.config.SadlierMQDeclare;
+import com.sadlier.sadliermq.config.SadlierMQFactory;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.support.converter.MessageConverter;
@@ -19,15 +19,15 @@ public class ServiceASender {
     @Autowired
     SadlierRabbitTemplate sadlierRabbitTemplate;
 
-    public String sendAGoodMsgCreateUser(String message){
+    public String sendAGoodMsgCreateUser(Object message){
         MessageProperties messageProperties = new MessageProperties();
         Map<String, Object> header = messageProperties.getHeaders();
         header.put("message-type", "good-message");
         MessageConverter messageConverter = new SimpleMessageConverter();
         Message rmqmessage = messageConverter.toMessage(message, messageProperties);
-        sadlierRabbitTemplate.send(SadlierMQDeclare.EXCHANGE_USER, SadlierMQDeclare.RTK_TOPIC, rmqmessage);
+        sadlierRabbitTemplate.send(SadlierMQFactory.EXCHANGE_USER, SadlierMQFactory.RTK_TOPIC, rmqmessage);
 
-        return "Sent msg: {}"+ message;
+        return "Sent message: "+ rmqmessage;
     }
 
     public String sendABadMsgCreateUser(String message){
@@ -36,9 +36,20 @@ public class ServiceASender {
         header.put("message-type", "bad-message");
         MessageConverter messageConverter = new SimpleMessageConverter();
         Message rmqmessage = messageConverter.toMessage(message, messageProperties);
-        sadlierRabbitTemplate.send(SadlierMQDeclare.EXCHANGE_USER, SadlierMQDeclare.RTK_TOPIC, rmqmessage);
+        sadlierRabbitTemplate.send(SadlierMQFactory.EXCHANGE_USER, SadlierMQFactory.RTK_TOPIC, rmqmessage);
 
-        return "Sent msg: {}"+ message;
+        return "Sent message: "+ rmqmessage;
+    }
+
+    public String sendAErrMsgCreateUser(String message){
+        MessageProperties messageProperties = new MessageProperties();
+        Map<String, Object> header = messageProperties.getHeaders();
+        header.put("message-type", "error-message");
+        MessageConverter messageConverter = new SimpleMessageConverter();
+        Message rmqmessage = messageConverter.toMessage(message, messageProperties);
+        sadlierRabbitTemplate.send(SadlierMQFactory.EXCHANGE_USER, SadlierMQFactory.RTK_TOPIC, rmqmessage);
+
+        return "Sent message: "+ rmqmessage;
     }
 
 }

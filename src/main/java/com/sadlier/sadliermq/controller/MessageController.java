@@ -29,4 +29,9 @@ public class MessageController {
     public String sendAbadMessage(@RequestParam("msg") String msg) {
         return serviceASender.sendABadMsgCreateUser(msg);
     }
+
+    @GetMapping("/pub-error-message")
+    public String sendAErrMessage(@RequestParam("msg") String msg) {
+        return serviceASender.sendAErrMsgCreateUser(msg);
+    }
 }
