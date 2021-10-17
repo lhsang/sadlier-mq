@@ -7,11 +7,11 @@ package com.sadlier.sadliermq.common.properties;
 public class SadlierMQProperties {
     private boolean clusterMode = false;
 
-    private Integer ttlRetryMessage = 1;
+    private Integer ttlRetryMessage = 1000;
 
     private Integer maxRetriesAttempts = 3;
 
-    private Integer ttlMultiply = 5;
+    private Integer ttlMultiply = 2;
 
     private String queueRetry;
     private String queueDlq;

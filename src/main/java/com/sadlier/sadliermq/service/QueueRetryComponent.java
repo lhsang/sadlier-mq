@@ -61,10 +61,9 @@ public class QueueRetryComponent {
         }
         xDeathList.add(0, xDeath);
 
-//        message.getMessageProperties().getHeaders().remove(MessageHeaders.X_DEATH);
+        // message.getMessageProperties().getHeaders().remove(MessageHeaders.X_DEATH);
         sadlierRabbitTemplate.send(properties.getExchangeDlq(), properties.getQueueDlq(), message);
     }
-
 
     public int countDeath(final Message message) {
         int count = 0;
